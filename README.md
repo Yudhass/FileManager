@@ -12,7 +12,10 @@ tanpa RAM jebol, dengan progres real-time (kecepatan, ETA, file berjalan).
 Dibangun di atas **Node.js + Electron**, tanpa framework frontend berat dan tanpa
 dependensi runtime (seluruh logika memakai modul bawaan Node).
 
+![Fast File Manager — UI dual-pane](_image/V1.0.0.png)
+
 > Spesifikasi produk lengkap: [`_DEV/prd.md`](_DEV/prd.md).
+> Catatan rilis: [`_DEV/Rilis-V1.0.0.md`](_DEV/Rilis-V1.0.0.md).
 
 ---
 
@@ -84,7 +87,10 @@ Ikon aplikasi belum dipasang — taruh `icon.ico` (256×256) di root dan daftark
 ├── public/
 │   └── index.html        # Seluruh UI dual-pane (vanilla HTML/CSS/JS, tanpa build)
 ├── _DEV/
-│   └── prd.md            # Product Requirements Document (spesifikasi produk)
+│   ├── prd.md            # Product Requirements Document (spesifikasi produk)
+│   └── Rilis-V1.0.0.md   # Catatan rilis v1.0.0 (artefak, hash, panduan publish)
+├── _image/
+│   └── V1.0.0.png        # Screenshot UI v1.0.0 (dipakai README + catatan rilis)
 ├── Jalankan-FileManager.bat  # Launcer desktop (double-klik)
 ├── Build-Exe.bat             # Deploy -> installer + portable EXE
 └── dist/                 # Hasil build (diabaikan git)

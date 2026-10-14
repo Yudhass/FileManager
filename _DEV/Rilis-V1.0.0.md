@@ -9,6 +9,12 @@ File ini untuk maintainer / yang mempublish ke GitHub Releases.
 
 Rilis awal. Commit: `e48ab19` — "V1.0.0 - Init project sc for filemanager on copy or move file data".
 
+### Tampilan
+
+![Fast File Manager v1.0.0 — UI dual-pane](../_image/V1.0.0.png)
+
+*UI dual-pane v1.0.0: panel kiri = sumber, panel kanan = tujuan, action bar F5/F6/F8/F7 di bawah.*
+
 ### Artefak (folder `dist/`)
 
 | File | Ukuran | Keterangan |
@@ -73,6 +79,8 @@ Get-FileHash "dist\FastFileManager-Portable.exe" -Algorithm SHA256
 
 File manager dual-pane untuk copy/move data besar secepat batas hardware disk.
 
+![Fast File Manager v1.0.0 — UI dual-pane](https://github.com/<akun-anda>/<nama-repo>/blob/main/_image/V1.0.0.png?raw=true)
+
 ### Download
 - **Installer (disarankan):** `Fast File Manager Setup 1.0.0.exe` — install sekali,
   muncul di Start Menu/Desktop.
@@ -86,6 +94,11 @@ File manager dual-pane untuk copy/move data besar secepat batas hardware disk.
 Syarat: Windows 10/11 64-bit. Tidak perlu install Node.js.
 Jika SmartScreen muncul (aplikasi belum code-signed): More info → Run anyway.
 ```
+
+> Catatan gambar: pada template di atas, ganti `<akun-anda>/<nama-repo>` dengan
+> path repo GitHub yang sebenarnya, atau lebih mudah: drag-and-drop file
+> `_image/V1.0.0.png` langsung ke kolom deskripsi Release — GitHub akan
+> mengupload dan mengganti URL gambar otomatis.
 
 ---
 
