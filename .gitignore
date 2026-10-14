@@ -1,0 +1,11 @@
+# Dependensi
+node_modules/
+
+# Hasil build EXE
+dist/
+
+# Log & file sementara
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

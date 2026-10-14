@@ -1,0 +1,49 @@
+{
+  "name": "dual-pane-fast-file-manager",
+  "version": "1.0.0",
+  "description": "Dual-Pane Fast File Manager - copy/move cepat dengan worker_threads + streams (sesuai PRD _DEV/prd.md)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "browser": "node server.js",
+    "dist": "electron-builder --win nsis portable"
+  },
+  "build": {
+    "appId": "com.fastfilemanager.dualpanel",
+    "productName": "Fast File Manager",
+    "asar": true,
+    "asarUnpack": [
+      "transfer-worker.js"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "transfer-worker.js",
+      "public/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Fast File Manager"
+    },
+    "portable": {
+      "artifactName": "FastFileManager-Portable.exe"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "electron": "^44.7.1",
+    "electron-builder": "^26.15.3"
+  }
+}

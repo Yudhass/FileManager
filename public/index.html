@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dual-Pane Fast File Manager</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel2: #273549; --line: #334155;
+    --txt: #e2e8f0; --mut: #94a3b8; --acc: #38bdf8; --grn: #22c55e; --org: #f59e0b; --red: #ef4444;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--txt); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #0b1222; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header h1 span { color: var(--acc); }
+  header .sub { font-size: 11px; color: var(--mut); }
+  header .right { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--mut); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--grn); display: inline-block; }
+  main { flex: 1; display: flex; gap: 10px; padding: 10px; min-height: 0; }
+  .pane { flex: 1; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-width: 0; overflow: hidden; }
+  .pane.active { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); }
+  .pane-head { padding: 8px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; background: #16213a; }
+  .pane-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--acc); color: #06222f; font-weight: 800; }
+  .pane.active .badge { background: var(--grn); color: #05240f; }
+  .drives { display: flex; gap: 6px; flex-wrap: wrap; }
+  .drives button { background: var(--panel2); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+  .drives button:hover { border-color: var(--acc); }
+  .addr { display: flex; gap: 6px; }
+  .addr input { flex: 1; background: #0b1222; border: 1px solid var(--line); color: var(--txt); border-radius: 6px; padding: 6px 8px; font-size: 12px; min-width: 0; }
+  .addr button { background: var(--panel2); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+  .addr button:hover { border-color: var(--acc); }
+  .crumbs { font-size: 11px; color: var(--mut); white-space: nowrap; overflow-x: auto; }
+  .crumbs span { cursor: pointer; } .crumbs span:hover { color: var(--acc); }
+  .toolbar { display: flex; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .toolbar button { background: var(--panel2); color: var(--txt); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; font-size: 11px; cursor: pointer; }
+  .toolbar button:hover { border-color: var(--acc); }
+  .filelist { flex: 1; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { position: sticky; top: 0; background: #16213a; text-align: left; padding: 7px 8px; color: var(--mut); font-weight: 600; border-bottom: 1px solid var(--line); z-index: 1; cursor: pointer; user-select: none; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid #22304a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #26405f; }
+  tbody tr.sel { background: #0c4a6e; }
+  tbody tr.dir { color: #7dd3fc; }
+  .fname { display: flex; gap: 7px; align-items: center; }
+  .fname input[type=checkbox] { accent-color: var(--acc); width: 14px; height: 14px; }
+  .pane-foot { padding: 6px 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--mut); display: flex; justify-content: space-between; }
+  #actionbar { display: flex; gap: 8px; padding: 10px; background: #0b1222; border-top: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+  #actionbar button { border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff; }
+  #btnCopy { background: #0284c7; } #btnCopy:hover { background: #0369a1; }
+  #btnMove { background: #d97706; } #btnMove:hover { background: #b45309; }
+  #btnDel { background: #dc2626; } #btnDel:hover { background: #b91c1c; }
+  #btnMk { background: #334155; } #btnMk:hover { background: #475569; }
+  #btnRef { background: #334155; } #btnRef:hover { background: #475569; }
+  #actionbar .hint { font-size: 11px; color: var(--mut); margin-left: auto; }
+  #queue { background: #0b1222; border-top: 1px solid var(--line); max-height: 220px; overflow: auto; }
+  #queue h3 { font-size: 12px; padding: 8px 14px 2px; color: var(--mut); }
+  .job { margin: 8px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  .job .row1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .job .file { color: var(--mut); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+  .pill { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px; }
+  .st-active { background: #14532d; color: #bbf7d0; } .st-queued { background: #44403c; color: #fde68a; }
+  .st-paused { background: #78350f; color: #fde68a; } .st-done { background: #0c4a6e; color: #bae6fd; }
+  .st-error { background: #7f1d1d; color: #fecaca; } .st-cancelled { background: #3f3f46; color: #e4e4e7; }
+  .st-waiting-conflict { background: #701a75; color: #f5d0fe; } .st-scanning { background: #44403c; color: #fde68a; }
+  .bar { height: 8px; background: #0b1222; border-radius: 6px; margin-top: 6px; overflow: hidden; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, var(--acc), var(--grn)); width: 0%; transition: width .3s; }
+  .job .meta { color: var(--mut); font-size: 11px; margin-top: 4px; }
+  .job .ops { margin-left: auto; display: flex; gap: 6px; }
+  .job .ops button { background: var(--panel2); border: 1px solid var(--line); color: var(--txt); border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+  .job .ops button:hover { border-color: var(--acc); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; width: 460px; max-width: 92vw; }
+  .modal h2 { font-size: 15px; margin-bottom: 10px; }
+  .modal p { font-size: 12px; color: var(--mut); margin-bottom: 8px; word-break: break-all; }
+  .modal table { font-size: 12px; margin: 10px 0; }
+  .modal table td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  .modal .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .modal .btns button { flex: 1; min-width: 100px; padding: 9px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 12px; }
+  .b-over { background: #0284c7; color: #fff; } .b-skip { background: #475569; color: #fff; }
+  .b-ren { background: #d97706; color: #fff; }
+  .modal label { font-size: 12px; display: flex; gap: 6px; align-items: center; margin-top: 10px; }
+  .modal input[type=text], .modal input:not([type]) { width: 100%; background: #0b1222; border: 1px solid var(--line); color: var(--txt); border-radius: 8px; padding: 9px 10px; font-size: 13px; }
+  .modal input:focus { outline: none; border-color: var(--acc); }
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #020617; border: 1px solid var(--acc); color: var(--txt); padding: 9px 18px; border-radius: 8px; font-size: 13px; display: none; z-index: 99; }
+  @media (max-width: 800px) { main { flex-direction: column; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ Dual-Pane <span>Fast File Manager</span></h1>
+    <div class="sub">Kiri = Sumber &nbsp;•&nbsp; Kanan = Tujuan &nbsp;•&nbsp; Engine: streams 4MB + worker_threads</div>
+  </div>
+  <div class="right"><span class="dot"></span><span id="conn">Terhubung</span></div>
+</header>
+
+<main>
+  <section class="pane active" id="paneL">
+    <div class="pane-head">
+      <div class="pane-title"><span class="badge">KIRI • SUMBER</span><span id="countL"></span></div>
+      <div class="drives" id="drivesL"></div>
+      <div class="addr">
+        <button data-nav="up" data-pane="L">⬆ Up</button>
+        <input id="pathL" spellcheck="false">
+        <button data-go="L">Go</button>
+      </div>
+      <div class="crumbs" id="crumbsL"></div>
+    </div>
+    <div class="toolbar">
+      <button data-act="all" data-pane="L">Pilih semua</button>
+      <button data-act="none" data-pane="L">Batal pilih</button>
+      <button data-act="mkdir" data-pane="L">📁 Folder baru</button>
+      <button data-act="refresh" data-pane="L">🔄 Refresh</button>
+    </div>
+    <div class="filelist"><table>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" id="chkAllL"></th>
+        <th data-sort="name">Nama ⇅</th><th data-sort="size">Ukuran ⇅</th><th>Tipe</th><th data-sort="mtime">Modifikasi ⇅</th>
+      </tr></thead>
+      <tbody id="bodyL"></tbody>
+    </table></div>
+    <div class="pane-foot"><span id="statL"></span><span>Klik baris = pilih • Dobel-klik folder = masuk</span></div>
+  </section>
+
+  <section class="pane" id="paneR">
+    <div class="pane-head">
+      <div class="pane-title"><span class="badge">KANAN • TUJUAN</span><span id="countR"></span></div>
+      <div class="drives" id="drivesR"></div>
+      <div class="addr">
+        <button data-nav="up" data-pane="R">⬆ Up</button>
+        <input id="pathR" spellcheck="false">
+        <button data-go="R">Go</button>
+      </div>
+      <div class="crumbs" id="crumbsR"></div>
+    </div>
+    <div class="toolbar">
+      <button data-act="all" data-pane="R">Pilih semua</button>
+      <button data-act="none" data-pane="R">Batal pilih</button>
+      <button data-act="mkdir" data-pane="R">📁 Folder baru</button>
+      <button data-act="refresh" data-pane="R">🔄 Refresh</button>
+    </div>
+    <div class="filelist"><table>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" id="chkAllR"></th>
+        <th data-sort="name">Nama ⇅</th><th data-sort="size">Ukuran ⇅</th><th>Tipe</th><th data-sort="mtime">Modifikasi ⇅</th>
+      </tr></thead>
+      <tbody id="bodyR"></tbody>
+    </table></div>
+    <div class="pane-foot"><span id="statR"></span><span>Klik baris = pilih • Dobel-klik folder = masuk</span></div>
+  </section>
+</main>
+
+<div id="actionbar">
+  <button id="btnCopy">📋 F5 Copy →</button>
+  <button id="btnMove">🚚 F6 Move →</button>
+  <button id="btnDel">🗑 F8 Delete</button>
+  <button id="btnMk">📁 F7 Folder</button>
+  <button id="btnRef">🔄 Refresh</button>
+  <span class="hint">Arah transfer: panel AKTIF → panel sebelahnya • Klik panel untuk mengaktifkan</span>
+</div>
+
+<div id="queue"><h3>📦 Transfer (berjalan paralel)</h3><div id="jobs"></div></div>
+
+<div class="modal-bg" id="conflictModal">
+  <div class="modal">
+    <h2>⚠️ File sudah ada di tujuan</h2>
+    <p id="cfText"></p>
+    <table><tr><td>Sumber</td><td id="cfSrc"></td></tr>
+    <tr><td>Tujuan</td><td id="cfDst"></td></tr></table>
+    <div class="btns">
+      <button class="b-over" id="cfOver">Timpa</button>
+      <button class="b-skip" id="cfSkip">Lewati</button>
+      <button class="b-ren" id="cfRen">Rename</button>
+    </div>
+    <label><input type="checkbox" id="cfAll"> Berlakukan untuk semua konflik berikutnya</label>
+  </div>
+</div>
+
+<div class="modal-bg" id="mkdirModal">
+  <div class="modal">
+    <h2>📁 Folder baru</h2>
+    <p id="mkPath"></p>
+    <input id="mkName" placeholder="Nama folder…" maxlength="200" spellcheck="false">
+    <div class="btns">
+      <button class="b-over" id="mkOk">Buat</button>
+      <button class="b-skip" id="mkCancel">Batal</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="confirmModal">
+  <div class="modal">
+    <h2 id="cfmTitle"></h2>
+    <p id="cfmMsg"></p>
+    <div class="btns">
+      <button class="b-over" id="cfmOk">Ya</button>
+      <button class="b-skip" id="cfmNo">Tidak</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const S = {
+  L: { path: '', entries: [], sel: new Set(), sort: { k: 'name', d: 1 } },
+  R: { path: '', entries: [], sel: new Set(), sort: { k: 'name', d: 1 } },
+  active: 'L',
+  jobs: [],
+  conflictJob: null,
+  watch: {} // jobId -> true : panel asal+tujuan di-refresh otomatis saat job terminal
+};
+const $ = (id) => document.getElementById(id);
+
+function toast(msg, ms = 2600) {
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', ms);
+}
+async function api(url, opt) {
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+function fmtETA(s) {
+  if (s == null) return 'menghitung…';
+  if (s < 60) return s + ' dtk';
+  const m = Math.floor(s / 60), h = Math.floor(m / 60);
+  return h ? `${h} jam ${m % 60} mnt` : `${m} mnt ${s % 60} dtk`;
+}
+
+// ---------- navigasi ----------
+async function loadDrives() {
+  try {
+    const j = await api('/api/drives');
+    for (const side of ['L', 'R']) {
+      const box = $('drives' + side); box.innerHTML = '';
+      j.drives.forEach((d) => {
+        const b = document.createElement('button');
+        b.textContent = d; b.title = d;
+        b.onclick = () => navTo(side, d);
+        box.appendChild(b);
+      });
+      if (!S[side].path) S[side].path = j.home || j.drives[0];
+    }
+  } catch (e) { toast('Gagal baca drive: ' + e.message); }
+}
+async function navTo(side, p) {
+  const st = S[side];
+  try {
+    const j = await api('/api/list?path=' + encodeURIComponent(p));
+    st.path = j.path; st.entries = j.entries; st.sel.clear();
+    render(side);
+  } catch (e) { toast('Tidak bisa buka folder: ' + e.message); }
+}
+function render(side) {
+  const st = S[side];
+  $('path' + side).value = st.path;
+  // crumbs
+  const c = $('crumbs' + side); c.innerHTML = '';
+  const parts = st.path.split(/[/\\]+/).filter(Boolean);
+  let acc = /^[/\\]/.test(st.path) && !/^[A-Za-z]:/.test(st.path) ? '/' : '';
+  if (/^[A-Za-z]:/.test(st.path)) { acc = parts.shift() + '\\'; const s = document.createElement('span'); s.textContent = acc + ' ▸ '; s.onclick = () => navTo(side, acc); c.appendChild(s); }
+  else if (acc === '/') { const s = document.createElement('span'); s.textContent = '/ ▸ '; s.onclick = () => navTo(side, '/'); c.appendChild(s); }
+  let cur = acc;
+  parts.forEach((p, i) => {
+    cur += (cur.endsWith('\\') || cur.endsWith('/') ? '' : '/') + p;
+    const s = document.createElement('span'); s.textContent = p + ' ▸ ';
+    const target = cur;
+    s.onclick = () => navTo(side, target);
+    c.appendChild(s);
+  });
+  // sort
+  const { k, d } = st.sort;
+  st.entries.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    let r = 0;
+    if (k === 'size') r = a.size - b.size;
+    else if (k === 'mtime') r = a.mtime - b.mtime;
+    else r = a.name.localeCompare(b.name, 'id');
+    return r * d;
+  });
+  // rows
+  const tb = $('body' + side); tb.innerHTML = '';
+  // baris ".." untuk naik
+  const up = document.createElement('tr'); up.className = 'dir';
+  up.innerHTML = '<td></td><td colspan="4">📁 .. (naik ke atas)</td>';
+  up.ondblclick = () => goUp(side);
+  tb.appendChild(up);
+  st.entries.forEach((e) => {
+    const tr = document.createElement('tr');
+    if (e.isDir) tr.className = 'dir';
+    if (st.sel.has(e.path)) tr.classList.add('sel');
+    const icon = e.isDir ? '📁' : '📄';
+    tr.innerHTML = `<td><input type="checkbox" ${st.sel.has(e.path) ? 'checked' : ''}></td>
+      <td><span class="fname">${icon} ${escapeHtml(e.name)}</span></td>
+      <td>${e.sizeText}</td><td>${escapeHtml(e.ext)}</td><td>${e.mtimeText}</td>`;
+    const chk = tr.querySelector('input');
+    chk.onclick = (ev) => { ev.stopPropagation(); toggle(side, e.path); };
+    tr.onclick = () => toggle(side, e.path);
+    tr.ondblclick = () => { if (e.isDir) navTo(side, e.path); };
+    tb.appendChild(tr);
+  });
+  $('countL').textContent = side === 'L' ? `(${st.sel.size} dipilih)` : $('countL').textContent;
+  $('countR').textContent = side === 'R' ? `(${st.sel.size} dipilih)` : $('countR').textContent;
+  $('statL').textContent = side === 'L' ? `${st.entries.length} item • ${st.sel.size} dipilih` : $('statL').textContent;
+  $('statR').textContent = side === 'R' ? `${st.entries.length} item • ${st.sel.size} dipilih` : $('statR').textContent;
+  document.querySelectorAll('.pane').forEach((p) => p.classList.remove('active'));
+  $('pane' + S.active).classList.add('active');
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function toggle(side, p) { const s = S[side].sel; s.has(p) ? s.delete(p) : s.add(p); setActive(side); render(side); }
+function setActive(side) { S.active = side; document.querySelectorAll('.pane').forEach((p) => p.classList.remove('active')); $('pane' + side).classList.add('active'); }
+function goUp(side) {
+  const p = S[side].path;
+  const parent = p.replace(/[/\\]+$/, '').split(/[/\\]/).slice(0, -1).join('/') || '/';
+  navTo(side, parent === '' ? '/' : parent);
+}
+function selectedOrCurrent(side) {
+  const st = S[side];
+  if (st.sel.size) return [...st.sel];
+  toast('Pilih dulu file/folder di panel ' + (side === 'L' ? 'KIRI' : 'KANAN'));
+  return [];
+}
+
+// ---------- operasi ----------
+async function doTransfer(op) {
+  const src = S.active, dst = S.active === 'L' ? 'R' : 'L';
+  const sources = selectedOrCurrent(src);
+  if (!sources.length) return;
+  try {
+    const j = await api('/api/transfer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operation: op, sources, destDir: S[dst].path }) });
+    toast((op === 'copy' ? '📋 Copy' : '🚚 Move') + ' dimulai: ' + j.id);
+    S.watch = S.watch || {};
+    S.watch[j.id] = true; // refresh panel asal + tujuan otomatis saat job selesai
+    refreshJobs();
+  } catch (e) { toast('Gagal: ' + e.message); }
+}
+async function doDelete() {
+  const paths = selectedOrCurrent(S.active);
+  if (!paths.length) return;
+  const ok = await askConfirm('🗑 Hapus permanen?', `Hapus ${paths.length} item di panel ${S.active}? Tindakan ini permanen!`, 'Hapus');
+  if (!ok) return;
+  try {
+    const j = await api('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths }) });
+    toast(`🗑 Terhapus ${j.ok} item` + (j.errors.length ? ' • gagal: ' + j.errors.length : ''));
+    navTo(S.active, S[S.active].path);
+  } catch (e) { toast('Gagal hapus: ' + e.message); }
+}
+// prompt() bawaan browser TIDAK didukung Electron -> pakai modal sendiri
+let mkdirSide = 'L';
+function doMkdir(side) {
+  mkdirSide = side;
+  $('mkPath').textContent = 'Lokasi: ' + S[side].path;
+  $('mkName').value = '';
+  $('mkdirModal').classList.add('show');
+  setTimeout(() => $('mkName').focus(), 50);
+}
+async function submitMkdir() {
+  const name = $('mkName').value.trim().replace(/[<>:"/\\|?*]/g, '');
+  if (!name) { toast('Isi dulu nama foldernya'); return; }
+  $('mkdirModal').classList.remove('show');
+  const sep = S[mkdirSide].path.endsWith('\\') || S[mkdirSide].path.endsWith('/') ? '' : '/';
+  try {
+    await api('/api/mkdir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: S[mkdirSide].path + sep + name }) });
+    toast('📁 Folder dibuat: ' + name);
+    navTo(mkdirSide, S[mkdirSide].path);
+  }
+  catch (e) { toast('Gagal buat folder: ' + e.message); }
+}
+
+// ---------- jobs ----------
+const ST_LABEL = { queued: 'ANTRE', scanning: 'SCAN…', active: 'JALAN', paused: 'JEDA', 'waiting-conflict': 'KONFLIK', done: 'SELESAI', error: 'GAGAL', cancelled: 'BATAL' };
+async function refreshJobs() {
+  try {
+    const j = await api('/api/jobs');
+    S.jobs = j.jobs;
+    const box = $('jobs'); box.innerHTML = '';
+    if (!j.jobs.length) { box.innerHTML = '<div style="padding:4px 14px 12px;font-size:11px;color:var(--mut)">Belum ada transfer. Pilih file di satu panel lalu tekan F5 (Copy) / F6 (Move).</div>'; }
+    j.jobs.slice(0, 8).forEach((job) => {
+      const d = document.createElement('div'); d.className = 'job';
+      const pct = job.totalBytes > 0 ? Math.floor(job.copiedBytes / job.totalBytes * 100) : (job.status === 'done' ? 100 : 0);
+      d.innerHTML = `<div class="row1">
+          <span class="pill st-${job.status}">${ST_LABEL[job.status] || job.status}</span>
+          <b>${job.operation.toUpperCase()}</b><span>• ${job.id}</span>
+          <span class="file">${escapeHtml(job.currentFile || '')}</span>
+          <span class="ops"></span>
+        </div>
+        <div class="bar"><div style="width:${pct}%"></div></div>
+        <div class="meta"></div>`;
+      const ops = d.querySelector('.ops');
+      // Job terminal (done/error/cancelled): tampilkan ringkasan hasil, bukan speed/ETA basi
+      let meta;
+      if (['done', 'error', 'cancelled'].includes(job.status)) {
+        const dur = (job.startedAt && job.finishedAt) ? ((job.finishedAt - job.startedAt) / 1000) : null;
+        const durText = dur == null ? '' : (dur < 60 ? ` • selesai dalam ${dur.toFixed(1)} dtk` : ` • selesai dalam ${Math.floor(dur / 60)} mnt ${Math.round(dur % 60)} dtk`);
+        meta = `${pct}% • ${job.doneFiles}/${job.totalFiles} file • ${fmtB(job.copiedBytes)}${job.skippedFiles ? ` • skip ${job.skippedFiles}` : ''}${durText}${job.error ? ` • ❌ ${escapeHtml(job.error)}` : ''}`;
+      } else {
+        meta = `${pct}% • ${job.doneFiles}/${job.totalFiles} file • ${fmtB(job.copiedBytes)}/${fmtB(job.totalBytes)} • ${job.speedText} • ETA ${fmtETA(job.eta)}${job.skippedFiles ? ' • skip ' + job.skippedFiles : ''}${job.error ? ' • ❌ ' + escapeHtml(job.error) : ''}`;
+      }
+      d.querySelector('.meta').innerHTML = meta;
+      if (['active', 'waiting-conflict'].includes(job.status)) ops.appendChild(mkBtn('⏸ Jeda', () => api('/api/jobs/' + job.id + '/pause', { method: 'POST' }).then(refreshJobs)));
+      if (job.status === 'paused') ops.appendChild(mkBtn('▶ Lanjut', () => api('/api/jobs/' + job.id + '/resume', { method: 'POST' }).then(refreshJobs)));
+      if (['active', 'paused', 'queued', 'waiting-conflict', 'scanning'].includes(job.status)) ops.appendChild(mkBtn('✖ Batal', async () => {
+        const ok = await askConfirm('Batalkan transfer?', `Batalkan ${job.id}? File yang sudah tercopy tetap ada di tujuan.`, 'Ya, Batalkan');
+        if (!ok) return;
+        try { await api('/api/jobs/' + job.id + '/cancel', { method: 'POST' }); toast('⏳ Membatalkan ' + job.id + '…'); }
+        catch (e) { toast('Gagal batal: ' + e.message); }
+        refreshJobs();
+      }));
+      // Job gagal/dibatalkan bisa diulang tanpa memilih ulang file/folder
+      if (['error', 'cancelled'].includes(job.status)) ops.appendChild(mkBtn('↻ Coba lagi', async () => {
+        try {
+          await api('/api/jobs/' + job.id + '/retry', { method: 'POST' });
+          S.watch = S.watch || {};
+          S.watch[job.id] = true;
+          toast('↻ Mengulang ' + job.id + '… (sambungkan kembali penyimpanannya dulu)');
+        }
+        catch (e) { toast('Gagal mengulang: ' + e.message); }
+        refreshJobs();
+      }));
+      box.appendChild(d);
+    });
+    // konflik?
+    const w = j.jobs.find((x) => x.status === 'waiting-conflict' && x.conflict);
+    if (w) showConflict(w); else hideConflict();
+    // auto-refresh panel ASAL + TUJUAN saat job mencapai status akhir.
+    // Dua lapis: (1) job yang dipantau ( Dibuat dari jendela ini -> toast+refresh),
+    // (2) transisi status job APAPUN ke terminal (jaring pengaman bila watcher
+    //     terlewat, mis. job dibuat sebelum UI dimuat ulang) -> refresh saja.
+    S._lastStatus = S._lastStatus || {};
+    const TERMINAL = ['done', 'error', 'cancelled'];
+    for (const job of j.jobs) {
+      const prev = S._lastStatus[job.id];
+      S._lastStatus[job.id] = job.status;
+      const isTerminal = TERMINAL.includes(job.status);
+      const justFinished = isTerminal && prev && prev !== job.status && !TERMINAL.includes(prev);
+      if (S.watch[job.id] && isTerminal) {
+        delete S.watch[job.id];
+        const label = job.operation === 'copy' ? 'Copy' : 'Move';
+        if (job.status === 'done') toast(`✅ ${label} selesai: ${job.doneFiles} file` + (job.skippedFiles ? ` (${job.skippedFiles} dilewati)` : ''));
+        else if (job.status === 'cancelled') toast(`⚠️ ${label} dibatalkan`);
+        else toast(`❌ ${label} gagal: ${job.error || 'unknown'}`);
+        S.L.sel.clear(); S.R.sel.clear();
+        navTo('L', S.L.path); navTo('R', S.R.path);
+      } else if (justFinished) {
+        S.L.sel.clear(); S.R.sel.clear();
+        navTo('L', S.L.path); navTo('R', S.R.path);
+      }
+    }
+    // Buang catatan job yang sudah tidak ada di daftar (hindari memori membengkak)
+    for (const id of Object.keys(S._lastStatus)) {
+      if (!j.jobs.some((x) => x.id === id)) delete S._lastStatus[id];
+    }
+    $('conn').textContent = (window.desktop ? '● Desktop v' + window.desktop.version : '● Terhubung');
+  } catch (e) { $('conn').textContent = 'Terputus: ' + e.message; }
+}
+function mkBtn(t, fn) { const b = document.createElement('button'); b.textContent = t; b.onclick = fn; return b; }
+function fmtB(b) { if (!b) return '0 B'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; const i = Math.min(u.length - 1, Math.floor(Math.log(b) / Math.log(1024))); return (b / Math.pow(1024, i)).toFixed(2) + ' ' + u[i]; }
+function showConflict(job) {
+  S.conflictJob = job;
+  $('conflictModal').classList.add('show');
+  const c = job.conflict;
+  $('cfText').textContent = 'File tujuan sudah ada: ' + c.dest;
+  $('cfSrc').textContent = `${c.source} (${c.srcSizeText}, ${c.srcMtime})`;
+  $('cfDst').textContent = `${c.dest} (${c.dstSizeText}, ${c.dstMtime})`;
+}
+function hideConflict() { S.conflictJob = null; $('conflictModal').classList.remove('show'); $('cfAll').checked = false; }
+async function resolveConflict(choice) {
+  if (!S.conflictJob) return;
+  await api('/api/jobs/' + S.conflictJob.id + '/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: choice, applyAll: $('cfAll').checked }) });
+  hideConflict(); refreshJobs();
+}
+
+// ---------- events ----------
+$('btnCopy').onclick = () => doTransfer('copy');
+$('btnMove').onclick = () => doTransfer('move');
+$('btnDel').onclick = doDelete;
+$('btnMk').onclick = () => doMkdir(S.active);
+$('btnRef').onclick = () => { navTo('L', S.L.path); navTo('R', S.R.path); };
+$('cfOver').onclick = () => resolveConflict('overwrite');
+$('cfSkip').onclick = () => resolveConflict('skip');
+$('cfRen').onclick = () => resolveConflict('rename');
+$('mkOk').onclick = submitMkdir;
+$('mkCancel').onclick = () => $('mkdirModal').classList.remove('show');
+$('mkName').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitMkdir();
+  if (e.key === 'Escape') $('mkdirModal').classList.remove('show');
+});
+// Dialog konfirmasi bawaan aplikasi (confirm()/prompt() tidak andal di Electron)
+let cfmResolve = null;
+function askConfirm(title, msg, okLabel = 'Ya') {
+  return new Promise((resolve) => {
+    cfmResolve = resolve;
+    $('cfmTitle').textContent = title;
+    $('cfmMsg').textContent = msg;
+    $('cfmOk').textContent = okLabel;
+    $('confirmModal').classList.add('show');
+  });
+}
+function closeConfirm(val) {
+  $('confirmModal').classList.remove('show');
+  if (cfmResolve) cfmResolve(val);
+  cfmResolve = null;
+}
+$('cfmOk').onclick = () => closeConfirm(true);
+$('cfmNo').onclick = () => closeConfirm(false);
+$('paneL').addEventListener('click', () => setActive('L'));
+$('paneR').addEventListener('click', () => setActive('R'));
+document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => { const s = b.dataset.go; navTo(s, $('path' + s).value); });
+document.querySelectorAll('[data-nav]').forEach((b) => b.onclick = () => goUp(b.dataset.pane));
+document.querySelectorAll('[data-act]').forEach((b) => b.onclick = () => {
+  const s = b.dataset.pane, a = b.dataset.act;
+  if (a === 'all') { S[s].entries.forEach((e) => S[s].sel.add(e.path)); render(s); }
+  if (a === 'none') { S[s].sel.clear(); render(s); }
+  if (a === 'mkdir') doMkdir(s);
+  if (a === 'refresh') navTo(s, S[s].path);
+});
+document.querySelectorAll('[data-sort]').forEach((th) => th.onclick = () => {
+  // tentukan panel dari thead induk
+  const table = th.closest('table'); const tb = table.querySelector('tbody').id;
+  const side = tb.endsWith('L') ? 'L' : 'R';
+  const k = th.dataset.sort;
+  if (S[side].sort.k === k) S[side].sort.d *= -1; else S[side].sort = { k, d: 1 };
+  render(side);
+});
+for (const s of ['L', 'R']) {
+  $('path' + s).addEventListener('keydown', (e) => { if (e.key === 'Enter') navTo(s, $('path' + s).value); });
+  $('chkAll' + s).onchange = (e) => {
+    if (e.target.checked) S[s].entries.forEach((x) => S[s].sel.add(x.path));
+    else S[s].sel.clear();
+    render(s);
+  };
+}
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+  if (e.key === 'F5') { e.preventDefault(); doTransfer('copy'); }
+  if (e.key === 'F6') { e.preventDefault(); doTransfer('move'); }
+  if (e.key === 'F8') { e.preventDefault(); doDelete(); }
+  if (e.key === 'F7') { e.preventDefault(); doMkdir(S.active); }
+});
+
+// ---------- init ----------
+(async function init() {
+  await loadDrives();
+  await navTo('L', S.L.path);
+  await navTo('R', S.R.path);
+  refreshJobs();
+  setInterval(refreshJobs, 900);
+})();
+</script>
+</body>
+</html>
